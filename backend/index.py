@@ -10,7 +10,7 @@ def getme():
 def api():
     method = ""
     if request.method == "POST":
-        method = "P"
+        method = "Post"
     else:
-        method = "G"
+        method = "Get"
     return jsonify({"method": method})
