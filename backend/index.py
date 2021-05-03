@@ -17,7 +17,7 @@ def sample():
 @app.route('/api/predict', methods=['GET'])
 def predict():
     request_data = request.get_json()
-    return jsonify(predictor.predict_single(request_data))
+    return jsonify(predictor.predict(request_data))
 
 
 @app.route('/api', methods=['GET', 'POST'])

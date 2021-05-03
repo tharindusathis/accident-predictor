@@ -1,59 +1,80 @@
 import pickle
 import pandas as pd
 import numpy as np
+import json
+import util
 
-logreg_model = pickle.load(open("./models/logreg_v0.1.model", 'rb'))
-logreg_template = pickle.load(open("./models/logreg_v0.1.template", 'rb'))
+model_random_forest = pickle.load(open("./models/rf_v1.model", 'rb'))
+model_decision_tree = pickle.load(open("./models/dt_v1.model", 'rb'))
+
+record_template = pickle.load(open("./models/record_v1.template", 'rb'))
+record_template = record_template.head(0) 
 
 predict_input_sample = {
-    'Longitude': -1.528166,
-    'Latitude': 54.519576,
-    'Day_of_Week': 4.0,
-    'Speed_limit': 30.0,
-    'Urban_or_Rural_Area': 1.0,
-    'Year': 2006.0,
-    'Hour': 9.0,
-    'Day_of_Year': 18.0,
-    'Cluster_1': 11612.0,
-    'Vehicle_Type': 9.0,
-    'Sex_of_Driver': 1.0,
-    'Age_of_Driver': 68.0,
-    'Engine_Capacity_(CC)': -1.0,
-    'Age_of_Vehicle': -1.0,
-    'Driver_Home_Area_Type': 1.0,
-    'Road_Type_Dual carriageway': 0,
-    'Road_Type_One way street': 0,
-    'Road_Type_Roundabout': 0,
-    'Road_Type_Single carriageway': 1,
-    'Road_Type_Slip road': 0,
-    'Road_Type_Unknown': 0,
-    'Light_Conditions_Darkeness: No street lighting': 0,
-    'Light_Conditions_Darkness: Street lighting unknown': 0,
-    'Light_Conditions_Darkness: Street lights present and lit': 0,
-    'Light_Conditions_Darkness: Street lights present but unlit': 0,
-    'Light_Conditions_Daylight: Street light present': 1,
-    'Weather_Conditions_Fine with high winds': 0,
-    'Weather_Conditions_Fine without high winds': 1,
-    'Weather_Conditions_Fog or mist': 0,
-    'Weather_Conditions_Other': 0,
-    'Weather_Conditions_Raining with high winds': 0,
-    'Weather_Conditions_Raining without high winds': 0,
-    'Weather_Conditions_Snowing with high winds': 0,
-    'Weather_Conditions_Snowing without high winds': 0,
-    'Road_Surface_Conditions_Dry': 0,
-    'Road_Surface_Conditions_Flood (Over 3cm of water)': 0,
-    'Road_Surface_Conditions_Frost/Ice': 0,
-    'Road_Surface_Conditions_Snow': 0,
-    'Road_Surface_Conditions_Wet/Damp': 1
-}
+    'engine_capacity_(cc)': 1598.0,
+    'vehicle_type': 9.0,
+    'latitude': 52.907427,
+    'age_of_driver': 29.0,
+    'longitude': 0.5031329999999999,
+    'cluster_1': 20813.0,
+    'day_of_year': 168.0,
+    'rltv_hum': 93.65070004309445,
+    'dewpoint': 13.473545391726475,
+    'ground_state_id': 9.99945402758954,
+    'age_of_vehicle': -1.0,
+    'wind_speed': 2.761644671125486,
+    'air_temperature': 14.473059052731935,
+    'wind_direction': 111.18360952432366,
+    'hour': 8.0,
+    'cld_ttl_amt_id': 3.4569632403892405
+    }
 
 
 def predict_single(input):
-    test_record = logreg_template
-    test_record = test_record.head(0)
     try:
-        test_record = test_record.append(input, ignore_index=True)
-        pred_record = logreg_model.predict(test_record)
-        return {'Accidents': pred_record.tolist()}
+        df = pd.DataFrame()
+        df = record_template.append(input, ignore_index=True)
+        pred_record = model_random_forest.predict(df)
+        return not not pred_record[0]
     except Exception as e:
-        return {'Error': str(e)}
+        print('Error', str(e))
+        return False
+
+
+def predict(input):
+    common_record = {k:float(v) for k,v in input['common'].items()}
+    weather_data = {} # cache weather data for a single cluster
+    prev_cluster = -1
+    accident_output = []
+    for location in input['locations']:
+        rec = common_record
+
+        # location data
+        rec['latitude'] = float(location['latitude'])
+        rec['longitude'] = float(location['longitude'])
+        rec['cluster_1'] = util.get_cluster(rec['latitude'], rec['longitude'])
+
+        # dynamic data
+        if prev_cluster != rec['cluster_1']:
+            weather_data = util.get_weather_data(rec['cluster_1'])
+            prev_cluster = rec['cluster_1']
+
+        rec['air_temperature'] = weather_data['air_temperature']
+        rec['cld_ttl_amt_id'] = weather_data['cld_ttl_amt_id']
+        rec['dewpoint'] = weather_data['dewpoint']
+        rec['ground_state_id'] = weather_data['ground_state_id']
+        rec['rltv_hum'] = weather_data['rltv_hum']
+        rec['wind_direction'] = weather_data['wind_direction']
+        rec['wind_speed'] = weather_data['wind_speed']
+
+        # print (json.dumps(rec, indent=2, default=str))
+
+        if predict_single(predict_input_sample):
+            accident_output.append({
+                "latitude": rec['latitude'],
+                "longitude": rec['longitude']
+            })
+
+    return accident_output
+
+        
