@@ -1,8 +1,14 @@
 import pickle
 import pandas as pd
+import os
+import urllib.parse
+import requests
+import random
+
 
 ball_tree_cluster = pickle.load(open("./models/ball_tree_cluster.tree", 'rb'))
 gdf_df = pickle.load(open("./models/gdf_df.data", 'rb'))
+dummy_weather_df = pickle.load(open("./models/dummy_weather.df", 'rb'))
 
 def get_cluster(lat, lon):
 
@@ -22,14 +28,26 @@ def get_cluster(lat, lon):
     
     return input_df.iloc[0]['cluster_1']
 
-def get_weather_data(cluster):
-    # todo
-    return {
-        "air_temperature": 14.473059052731935,
-        "cld_ttl_amt_id": 3.4569632403892405,
-        "dewpoint": 13.473545391726475,
-        "ground_state_id": 9.99945402758954,
-        "rltv_hum": 93.65070004309445,
-        "wind_direction": 111.18360952432366,
-        "wind_speed": 2.761644671125486
-    }
+
+
+'''
+[Demostration purpose only] 
+This give fake weather details to test the models
+
+TODO: replace this with actual data from a weather API
+
+Parameters:
+air_temperature	    Air temperature	                [degC]
+cld_ttl_amt_id	    Total cloud amount code	        [Oktas]
+dewpoint	        Dewpoint temperature	        [degC]
+ground_state_id	    Ground state code 
+rltv_hum	        Calculated relative humidity	[%]
+wind_direction  	wind direction	                [deg true]
+wind_speed	        wind speed	                    [knots]
+
+'''
+def get_weather_data(cluster, date=-1):
+    random.seed(cluster + date / 1000)
+    SIZE = 78000
+    data =  dummy_weather_df.loc[[random.randrange(SIZE)]].to_dict('records')[0]
+    return (data)

@@ -1,17 +1,17 @@
-import pickle
+import joblib
 import pandas as pd
 import numpy as np
 import json
 import util
 
-model_random_forest = pickle.load(open("./models/rf_v1.model", 'rb'))
-model_decision_tree = pickle.load(open("./models/dt_v1.model", 'rb'))
+model_random_forest = joblib.load("./models/rf_v2.compressed")
+model_decision_tree = joblib.load("./models/dt_v2.compressed")
 
-record_template = pickle.load(open("./models/record_v1.template", 'rb'))
+record_template = joblib.load("./models/record_v2.template")
 record_template = record_template.head(0) 
 
 predict_input_sample = {
-    'engine_capacity_(cc)': 1598.0,
+    'engine_capacity': 1598.0,
     'vehicle_type': 9.0,
     'latitude': 52.907427,
     'age_of_driver': 29.0,
@@ -29,12 +29,21 @@ predict_input_sample = {
     'cld_ttl_amt_id': 3.4569632403892405
     }
 
+'''
+Predict a single record
+method = rf|dt (rf = random forest, dt = decision tree)
+'''
+def predict_single(input, method='rf'):
 
-def predict_single(input):
+    # print(json.dumps(input, indent=2, default=str))
+
     try:
         df = pd.DataFrame()
         df = record_template.append(input, ignore_index=True)
-        pred_record = model_random_forest.predict(df)
+        if(method == 'dt'):
+            pred_record = model_decision_tree.predict(df)
+        else:
+            pred_record = model_random_forest.predict(df)
         return not not pred_record[0]
     except Exception as e:
         print('Error', str(e))
@@ -56,7 +65,7 @@ def predict(input):
 
         # dynamic data
         if prev_cluster != rec['cluster_1']:
-            weather_data = util.get_weather_data(rec['cluster_1'])
+            weather_data = util.get_weather_data(rec['cluster_1'], rec['day_of_year'])
             prev_cluster = rec['cluster_1']
 
         rec['air_temperature'] = weather_data['air_temperature']
@@ -69,7 +78,7 @@ def predict(input):
 
         # print (json.dumps(rec, indent=2, default=str))
 
-        if predict_single(predict_input_sample):
+        if predict_single(rec):
             accident_output.append({
                 "latitude": rec['latitude'],
                 "longitude": rec['longitude']
